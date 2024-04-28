@@ -435,9 +435,9 @@ class AirlineApp(tk.Tk):
 
             conn.close()
 
-    def setup_reservations_tab(self):
+        def setup_reservations_tab(self):
         self.reservations_tab = ttk.Frame(self.tabControl)
-        self.tabControl.add(self.reservations_tab, text='Reservations')
+        self.tabControl.add(self.reservations_tab, text='Bookings')
 
         # UI for adding a booking
         ttk.Label(self.reservations_tab, text="Flight ID:").grid(row=0, column=0, padx=10, pady=5)
@@ -469,7 +469,7 @@ class AirlineApp(tk.Tk):
                                                                                                                column=1,
                                                                                                                pady=10,
                                                                                                             sticky="ew")
-        ttk.Button(self.reservations_tab, text='Delete Booking', command=self.delete_selected_booking,width=50).grid(row=3,
+        ttk.Button(self.reservations_tab, text='Delete Booking', command=self.delete_selected_booking,width=20).grid(row=3,
                                                                                                             column=2,
                                                                                                             pady=10,
                                                                                                             sticky="ew")
