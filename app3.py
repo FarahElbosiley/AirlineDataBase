@@ -140,11 +140,11 @@ class AirlineApp(tk.Tk):
         # Buttons for managing airlines
         ttk.Button(self.airport_tab, text='Add Airport', command=self.add_airport, width=5).grid(row=4, column=0,
                                                                                                         pady=10,
-                                                                                                        sticky="nsew")
+                                                                                                        sticky="ew")
         ttk.Button(self.airport_tab, text='View Airports', command=self.view_airports, width=5).grid(row=4,
                                                                                                             column=1,
                                                                                                             pady=10,
-                                                                                                            sticky="nsew")
+                                                                                                            sticky="ew")
         ttk.Button(self.airport_tab, text='Delete Airport', command=self.delete_selected_airport, width=5).grid(
             row=4,
             column=2,
@@ -444,37 +444,43 @@ class AirlineApp(tk.Tk):
         self.passenger_id_entry = ttk.Entry(self.reservations_tab)
         self.passenger_id_entry.grid(row=1, column=1,sticky= "nsew")
 
-        ttk.Button(self.reservations_tab, text="Add Booking", command=self.add_booking,width=5).grid(row=2, column=0,
+        ttk.Label(self.reservations_tab, text="Payment status:").grid(row=2, column=0, padx=10, pady=5)
+        self.payment_status_entry = ttk.Entry(self.reservations_tab)
+        self.payment_status_entry.grid(row=2, column=1, sticky="nsew")
+
+        ttk.Button(self.reservations_tab, text="Add Booking", command=self.add_booking,width=5).grid(row=3, column=0,
                                                                                                         pady=10,
                                                                                                         sticky="ew")
 
         # Displaying bookings
         self.bookings_tree = ttk.Treeview(self.reservations_tab, columns=(
-            "Booking ID", "Flight ID", "Passenger ID", "Booking Date"), show="headings")
-        self.bookings_tree.grid(row=3, column=0, columnspan=2, sticky="nsew")
+            "Booking ID", "Flight ID", "Passenger ID", "Booking Date", "Payment Status"), show="headings")
+        self.bookings_tree.grid(row=4, column=0, columnspan=2, sticky="nsew")
         for col in self.bookings_tree["columns"]:
             self.bookings_tree.heading(col, text=col)
             self.bookings_tree.column(col, anchor=tk.CENTER)
             self.bookings_tree.column(col, width=150)  # Adjust the width as needed
 
-        ttk.Button(self.reservations_tab, text="View Bookings", command=self.refresh_bookings,width=5).grid(row=2,
+        ttk.Button(self.reservations_tab, text="View Bookings", command=self.refresh_bookings,width=5).grid(row=3,
                                                                                                                column=1,
                                                                                                                pady=10,
                                                                                                             sticky="ew")
-        ttk.Button(self.reservations_tab, text='Delete Booking', command=self.delete_selected_booking,width=50).grid(row=2,
+        ttk.Button(self.reservations_tab, text='Delete Booking', command=self.delete_selected_booking,width=50).grid(row=3,
                                                                                                             column=2,
                                                                                                             pady=10,
                                                                                                             sticky="ew")
 
 
     def add_booking(self):
-        entries = [self.flight_id_entry, self.passenger_id_entry]
+        entries = [self.flight_id_entry, self.passenger_id_entry, self.payment_status_entry]
         if not all(is_entry_valid(entry) for entry in entries):
             messagebox.showerror("Error", "All fields must be filled out.")
             return
 
         flight_id = self.flight_id_entry.get().strip()
         passenger_id = self.passenger_id_entry.get().strip()
+        payment_status = self.payment_status_entry.get().strip()
+
 
         booking_date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")  # Booking date as current datetime
 
@@ -493,8 +499,9 @@ class AirlineApp(tk.Tk):
                 messagebox.showerror("Error", "Passenger ID does not exist.")
                 return
 
-            query = "INSERT INTO Bookings (flight_id, passenger_id, booking_date) VALUES (%s, %s, %s)"
-            cursor.execute(query, (flight_id, passenger_id, booking_date))
+            query = "INSERT INTO Bookings (booking_date, payment_status, flight_id, " \
+                    "passenger_id) VALUES (%s, %s, %s, %s)"
+            cursor.execute(query, (booking_date,payment_status,flight_id, passenger_id))
             conn.commit()
             messagebox.showinfo("Success", "Booking successfully added!")
         #except sqlite3.IntegrityError:
@@ -511,7 +518,7 @@ class AirlineApp(tk.Tk):
         conn = connect_db()
         cursor = conn.cursor()
         try:
-            cursor.execute("SELECT booking_id, flight_id, passenger_id, booking_date FROM Bookings")
+            cursor.execute("SELECT booking_id, flight_id, passenger_id, booking_date,payment_status FROM Bookings")
             rows = cursor.fetchall()
             self.bookings_tree.delete(*self.bookings_tree.get_children())  # Clear the current view
             for row in rows:
@@ -1024,8 +1031,7 @@ class AirlineApp(tk.Tk):
             conn.close()
 
     def add_crew_member(self):
-        entries = [self.registration_number_entry, self.aircraft_type_entry, self.capacity_entry, self.airline_id_entry,
-                   self.airport_id_entry]
+        entries = [self.first_name_entry, self.last_name_entry, self.position_entry, self.experience_entry]
         if not all(is_entry_valid(entry) for entry in entries):
             messagebox.showerror("Error", "All fields must be filled out.")
             return
@@ -1157,7 +1163,7 @@ class AirlineApp(tk.Tk):
             if messagebox.askyesno("Confirm Deletion", "Are you sure you want to delete this airline?"):
                 conn = connect_db()
                 cursor = conn.cursor()
-                cursor.execute("DELETE FROM Airlines WHERE airline_id=?", (airline_id,))
+                cursor.execute("DELETE FROM Airlines WHERE airline_id=%s", (airline_id,))
                 conn.commit()
                 conn.close()
                 self.view_airlines()
