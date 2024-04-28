@@ -5,7 +5,10 @@ from datetime import datetime
 
 def connect_db():
     """Establish a connection to the database."""
-    return mysql.connector.connect(host = "localhost",user="root",passwd = "1234",database = "NewAirline")
+    return mysql.connector.connect(host="localhost", user="root", passwd="1234", database="airlinemysql",
+                                   auth_plugin='mysql_native_password')
+
+
 def is_entry_valid(entry):
     # Basic validation function to ensure the entry is not empty
     return entry.get().strip() != ""
@@ -28,7 +31,93 @@ class AirlineApp(tk.Tk):
         self.setup_airport_tab()
         self.setup_payments_tab()
         self.setup_tickets_tab()
+        self.setup_routes_tab()
         self.tabControl.pack(expand=1, fill="both")
+
+    def add_route(self):
+        arrival_airport_id = self.arrival_airport_id_entry.get().strip()
+        departure_airport_id = self.departure_airport_id_entry.get().strip()
+
+        if is_entry_valid(self.arrival_airport_id_entry) and is_entry_valid(self.departure_airport_id_entry):
+            conn = connect_db()
+            cursor = conn.cursor()
+
+            # Insert the route into the database
+            cursor.execute("INSERT INTO Routes (Arrival_airport_id, Departure_airport_id) VALUES (?, ?)",
+                           (arrival_airport_id, departure_airport_id))
+            conn.commit()
+
+            # Clear the entry fields
+            self.arrival_airport_id_entry.delete(0, tk.END)
+            self.departure_airport_id_entry.delete(0, tk.END)
+
+            # Refresh the routes list
+            self.refresh_routes()
+
+            conn.close()
+
+    def refresh_routes(self):
+        # Clear existing data from the treeview
+        self.routes_tree.delete(*self.routes_tree.get_children())
+
+        conn = connect_db()
+        cursor = conn.cursor()
+
+        # Retrieve routes from the database
+        cursor.execute("SELECT * FROM Routes")
+        routes = cursor.fetchall()
+
+        # Populate the treeview with route data
+        for route in routes:
+            self.routes_tree.insert("", tk.END, values=route)
+
+        conn.close()
+
+    def delete_selected_route(self):
+        selected_item = self.routes_tree.selection()
+        if selected_item:
+            conn = connect_db()
+            cursor = conn.cursor()
+
+            # Get the route ID of the selected route
+            route_id = self.routes_tree.item(selected_item)["values"][0]
+
+            # Delete the route from the database
+            cursor.execute("DELETE FROM Routes WHERE route_id=?", (route_id,))
+            conn.commit()
+
+            # Refresh the routes list
+            self.refresh_routes()
+
+            conn.close()
+
+    def setup_routes_tab(self):
+        self.routes_tab = ttk.Frame(self.tabControl)
+        self.tabControl.add(self.routes_tab, text='Routes')
+
+        # UI for adding a route
+        ttk.Label(self.routes_tab, text="Arrival Airport ID:").grid(row=0, column=0, padx=10, pady=5)
+        self.arrival_airport_id_entry = ttk.Entry(self.routes_tab)
+        self.arrival_airport_id_entry.grid(row=0, column=1)
+
+        ttk.Label(self.routes_tab, text="Departure Airport ID:").grid(row=1, column=0, padx=10, pady=5)
+        self.departure_airport_id_entry = ttk.Entry(self.routes_tab)
+        self.departure_airport_id_entry.grid(row=1, column=1)
+
+        ttk.Button(self.routes_tab, text="Add Route", command=self.add_route).grid(row=2, column=0, pady=10)
+
+        # Displaying routes
+        self.routes_tree = ttk.Treeview(self.routes_tab, columns=(
+            "Route ID", "Arrival Airport ID", "Departure Airport ID"), show="headings")
+        self.routes_tree.grid(row=3, column=0, columnspan=2, sticky="ew")
+        for col in self.routes_tree["columns"]:
+            self.routes_tree.heading(col, text=col)
+            self.routes_tree.column(col, anchor=tk.CENTER)
+            self.routes_tree.column(col, width=120)  # Adjust the width as needed
+
+        ttk.Button(self.routes_tab, text="Refresh Routes", command=self.refresh_routes).grid(row=2, column=1, pady=10)
+        ttk.Button(self.routes_tab, text='Delete Route', command=self.delete_selected_route).grid(row=2, column=2,
+                                                                                                  pady=10, sticky="ew")
 
     def setup_airport_tab(self):
         self.airport_tab = ttk.Frame(self.tabControl)
@@ -40,13 +129,13 @@ class AirlineApp(tk.Tk):
         self.airport_name_entry = ttk.Entry(self.airport_tab)
         self.airport_name_entry.grid(row=1, column=1, sticky="nsew")
 
-        ttk.Label(self.airport_tab, text='Country:').grid(row=2, column=0, padx=10, pady=5)
-        self.country_entry = ttk.Entry(self.airport_tab)
-        self.country_entry.grid(row=2, column=1, sticky="nsew")
+        ttk.Label(self.airport_tab, text='City:').grid(row=2, column=0, padx=10, pady=5)
+        self.city_entry = ttk.Entry(self.airport_tab)
+        self.city_entry.grid(row=2, column=1, sticky="nsew")
 
-        ttk.Label(self.airport_tab, text='Website:').grid(row=3, column=0, padx=10, pady=5)
-        self.website_entry = ttk.Entry(self.airport_tab)
-        self.website_entry.grid(row=3, column=1, sticky="nsew")
+        ttk.Label(self.airport_tab, text='Country:').grid(row=3, column=0, padx=10, pady=5)
+        self.country_entry = ttk.Entry(self.airport_tab)
+        self.country_entry.grid(row=3, column=1, sticky="nsew")
 
         # Buttons for managing airlines
         ttk.Button(self.airport_tab, text='Add Airport', command=self.add_airport, width=5).grid(row=4, column=0,
@@ -63,7 +152,7 @@ class AirlineApp(tk.Tk):
             sticky="ew")
 
         # Treeview for displaying airports
-        self.airport_tree = ttk.Treeview(self.airport_tab, columns=("Airport Name", "Country", "Website"), show="headings")
+        self.airport_tree = ttk.Treeview(self.airport_tab, columns=("Airport Name","City ","Country"), show="headings")
         self.airport_tree.grid(row=5, column=0, columnspan=3, pady=10, padx=10, sticky="nsew")
 
         # Set headings for the columns
@@ -78,21 +167,19 @@ class AirlineApp(tk.Tk):
         self.airport_tree.configure(yscrollcommand=self.airport_scroll.set)
 
     def add_airport(self):
-        entries = [self.airport_name_entry, self.country_entry,
-                   self.website_entry]
+        entries = [self.airport_name_entry, self.country_entry, self.city_entry]
         if not all(is_entry_valid(entry) for entry in entries):
             messagebox.showerror("Error", "All fields must be filled out.")
             return
         airport_name = self.airport_name_entry.get()
         country = self.country_entry.get()
-        website = self.website_entry.get()
+        city = self.city_entry.get()
 
         conn = connect_db()
         cursor = conn.cursor()
         try:
-            cursor.execute("""INSERT INTO Airports (airport_name, country, website)
-                                      VALUES (%s, %s, %s, %s, %s)""",
-                           (airport_name, country, website))
+            cursor.execute("""INSERT INTO Airports (airport_name, city,country)
+                              VALUES (%s, %s, %s)""", (airport_name, city,country))
             conn.commit()
             messagebox.showinfo("Success", "Airport added successfully")
         except Exception as e:
@@ -100,14 +187,14 @@ class AirlineApp(tk.Tk):
             print(e)
         finally:
             conn.close()
-        self.view_airport()
+        self.view_airports()
 
     def view_airports(self):
 
         conn = connect_db()
         cursor = conn.cursor()
         try:
-            cursor.execute("SELECT airport_name, country, website FROM Airports")
+            cursor.execute("SELECT airport_name,city , country FROM Airports")
             rows = cursor.fetchall()
             self.airport_tree.delete(*self.airport_tree.get_children())  # Clear the current view
             for row in rows:
@@ -200,8 +287,8 @@ class AirlineApp(tk.Tk):
 
             # Insert the payment into the database
             cursor.execute(
-                "INSERT INTO Payment (payment_method,payment_amount, payment_date, ) VALUES (?, datetime('now'), ?)",
-                (payment_amount, payment_method))
+                "INSERT INTO Payment (payment_method,payment_amount, payment_date ) VALUES (%s, %s,datetime('now'))",
+                (payment_amount, payment_method, payment_date))
             conn.commit()
 
             # Clear the entry fields
@@ -216,21 +303,18 @@ class AirlineApp(tk.Tk):
             conn.close()
 
     def refresh_payments(self):
-        # Clear existing data from the treeview
-        self.payments_tree.delete(*self.payments_tree.get_children())
-
         conn = connect_db()
         cursor = conn.cursor()
-
-        # Retrieve payments from the database
-        cursor.execute("SELECT * FROM Payment")
-        payments = cursor.fetchall()
-
-        # Populate the treeview with payment data
-        for payment in payments:
-            self.payments_tree.insert("", tk.END, values=payment)
-
-        conn.close()
+        try:
+            cursor.execute("SELECT * FROM Payment")
+            rows = cursor.fetchall()
+            self.payments_tree.delete(*self.payments_tree.get_children())  # Clear the current view
+            for row in rows:
+                self.payments_tree.insert("", tk.END, values=row)  # Insert new data
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to refresh peyments: {e}")
+        finally:
+            conn.close()
 
     def delete_selected_payment(self):
         selected_item = self.payments_tree.selection()
@@ -580,26 +664,6 @@ class AirlineApp(tk.Tk):
             self.airlines_tree.heading(col, text=col)
             self.airlines_tree.column(col, anchor=tk.CENTER, width=150)
 
-        # Fetch data from the database and populate the Treeview
-        self.populate_treeview()
-
-    def populate_treeview(self):
-        conn = connect_db()
-        cursor = conn.cursor()
-        # Execute SQL query to fetch data from the view
-        cursor.execute("SELECT * FROM AirlinesWithTotalFlights")
-
-        # Clear existing items in the Treeview
-        self.airlines_tree.delete(*self.airlines_tree.get_children())
-
-        # Populate the Treeview with fetched data
-        for row in cursor.fetchall():
-            self.airlines_tree.insert("", "end", values=row)
-
-        # Close the database connection
-        cursor.close()
-        conn.close()
-
     def setup_crew_tab(self):
         self.crew_tab = ttk.Frame(self.tabControl)
         self.tabControl.add(self.crew_tab, text='Crew Members')
@@ -948,7 +1012,7 @@ class AirlineApp(tk.Tk):
         cursor = conn.cursor()
         try:
             cursor.execute("SELECT * FROM AirlinesWithTotalFlights")
-            cursor.execute("SELECT airline_id, airline_name, country, website FROM Airlines")
+            # cursor.execute("SELECT airline_id, airline_name, country, website FROM Airlines")
             rows = cursor.fetchall()
             self.airlines_tree.delete(*self.airlines_tree.get_children())
             for row in rows:
