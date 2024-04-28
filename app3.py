@@ -43,7 +43,7 @@ class AirlineApp(tk.Tk):
             cursor = conn.cursor()
 
             # Insert the route into the database
-            cursor.execute("INSERT INTO Routes (Arrival_airport_id, Departure_airport_id) VALUES (?, ?)",
+            cursor.execute("INSERT INTO Routes (Arrival_airport_id, Departure_airport_id) VALUES (%s, %s)",
                            (arrival_airport_id, departure_airport_id))
             conn.commit()
 
@@ -83,7 +83,7 @@ class AirlineApp(tk.Tk):
             route_id = self.routes_tree.item(selected_item)["values"][0]
 
             # Delete the route from the database
-            cursor.execute("DELETE FROM Routes WHERE route_id=?", (route_id,))
+            cursor.execute("DELETE FROM Routes WHERE route_id=%s", (route_id,))
             conn.commit()
 
             # Refresh the routes list
@@ -209,8 +209,7 @@ class AirlineApp(tk.Tk):
         selected_items = self.airport_tree.selection()  # Gets the list of all selected items
         if selected_items:
             selected_item = selected_items[0]  # Assuming single selection, gets the first item
-            airport_id = self.airport_tree.item(selected_item, 'values')[
-                1]  # Get airport id from the second column
+            airport_id = self.airport_tree.item(selected_item, 'values')[0]  # Get airport id from the second column
 
             response = messagebox.askyesno("Confirm", "Are you sure you want to delete this airport?")
             if response:
@@ -260,7 +259,7 @@ class AirlineApp(tk.Tk):
             sticky="ew")
 
         # Treeview for displaying payments
-        self.payment_tree = ttk.Treeview(self.payment_tab, columns=("Payment Method", "Payment Amount", "Payment Date"), show="headings")
+        self.payment_tree = ttk.Treeview(self.payment_tab, columns=("Payment ID","Payment Method", "Payment Amount", "Payment Date"), show="headings")
         self.payment_tree.grid(row=5, column=0, columnspan=3, pady=10, padx=10, sticky="nsew")
 
         # Set headings for the columns
@@ -382,7 +381,7 @@ class AirlineApp(tk.Tk):
             cursor = conn.cursor()
 
             # Insert the ticket into the database
-            cursor.execute("INSERT INTO Tickets (ticket_type, price, seat_number) VALUES (?, ?, ?)",
+            cursor.execute("INSERT INTO Tickets (ticket_type, price, seat_number) VALUES (%s, %s, %s)",
                             (ticket_type, price, seat_number))
             conn.commit()
 
@@ -423,7 +422,7 @@ class AirlineApp(tk.Tk):
             ticket_id = self.tickets_tree.item(selected_item)["values"][0]
 
             # Delete the ticket from the database
-            cursor.execute("DELETE FROM Tickets WHERE ticket_id=?", (ticket_id,))
+            cursor.execute("DELETE FROM Tickets WHERE ticket_id=%s", (ticket_id,))
             conn.commit()
 
             # Refresh the tickets list
