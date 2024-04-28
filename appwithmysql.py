@@ -2,13 +2,18 @@ import mysql.connector
 import tkinter as tk
 from tkinter import ttk, messagebox
 from datetime import datetime
+#routes
 
 def connect_db():
     """Establish a connection to the database."""
-    return mysql.connector.connect(host = "localhost",user="root",passwd = "1234",database = "airlinemysql")
+    return mysql.connector.connect(host="localhost", user="root", passwd="1234", database="MySQLAirline")
+
+
 def is_entry_valid(entry):
     # Basic validation function to ensure the entry is not empty
     return entry.get().strip() != ""
+
+
 class AirlineApp:
     def __init__(self, root):
         self.root = root
@@ -25,8 +30,240 @@ class AirlineApp:
         self.setup_crew_tab()  # Set up the Crew Members tab
         self.setup_passengers_tab()
         self.setup_reservations_tab()
-
+        self.setup_airport_tab()
+        self.setup_payments_tab()
         self.tabControl.pack(expand=1, fill="both")
+
+    def setup_airport_tab(self):
+        self.airport_tab = ttk.Frame(self.tabControl)
+        self.tabControl.add(self.airport_tab, text='Airports')
+
+        # Labels and Entries for airports details
+        ttk.Label(self.airport_tab, text='Airport id:').grid(row=0, column=0, padx=10, pady=5)
+        self.airport_id_entry = ttk.Entry(self.airport_tab)
+        self.airport_id_entry.grid(row=0, column=1, sticky="nsew")
+
+        ttk.Label(self.airport_tab, text='Airport Name:').grid(row=1, column=0, padx=10, pady=5)
+        self.airport_name_entry = ttk.Entry(self.airport_tab)
+        self.airport_name_entry.grid(row=1, column=1, sticky="nsew")
+
+        ttk.Label(self.airport_tab, text='Country:').grid(row=2, column=0, padx=10, pady=5)
+        self.country_entry = ttk.Entry(self.airport_tab)
+        self.country_entry.grid(row=2, column=1, sticky="nsew")
+
+        ttk.Label(self.airport_tab, text='Website:').grid(row=3, column=0, padx=10, pady=5)
+        self.website_entry = ttk.Entry(self.airport_tab)
+        self.website_entry.grid(row=3, column=1, sticky="nsew")
+
+        # Buttons for managing airlines
+        ttk.Button(self.airport_tab, text='Add Airport', command=self.add_airport, width=5).grid(row=4, column=0,
+                                                                                                        pady=10,
+                                                                                                        sticky="nsew")
+        ttk.Button(self.airport_tab, text='View Airports', command=self.view_airports, width=5).grid(row=4,
+                                                                                                            column=1,
+                                                                                                            pady=10,
+                                                                                                            sticky="nsew")
+        ttk.Button(self.airport_tab, text='Delete Airport', command=self.delete_selected_airport, width=5).grid(
+            row=4,
+            column=2,
+            pady=10,
+            sticky="ew")
+
+        # Treeview for displaying airports
+        self.airport_tree = ttk.Treeview(self.airport_tab, columns=(
+            "Airport id", "Airport Name", "Country", "Website"), show="headings")
+        self.airport_tree.grid(row=5, column=0, columnspan=3, pady=10, padx=10, sticky="nsew")
+
+        # Set headings for the columns
+        for col in self.airport_tree["columns"]:
+            self.airport_tree.heading(col, text=col)
+            self.airport_tree.column(col, anchor=tk.CENTER)
+
+        # Scrollbar for the Treeview
+        self.airport_scroll = ttk.Scrollbar(self.airport_tab, orient="vertical",
+                                              command=self.airport_tree.yview)
+        self.airport_scroll.grid(row=5, column=3, sticky='nsew')
+        self.airport_tree.configure(yscrollcommand=self.airport_scroll.set)
+
+    def add_airport(self):
+        entries = [self.airport_id_entry, self.airport_name_entry, self.country_entry,
+                   self.website_entry]
+        if not all(is_entry_valid(entry) for entry in entries):
+            messagebox.showerror("Error", "All fields must be filled out.")
+            return
+        airport_id = self.airport_id_entry.get()
+        airport_name = self.airport_name_entry.get()
+        country = self.country_entry.get()
+        website = self.website_entry.get()
+
+        conn = connect_db()
+        cursor = conn.cursor()
+        try:
+            cursor.execute("""INSERT INTO Airports (airport_id, airport_name, country, website)
+                                      VALUES (%s, %s, %s, %s, %s)""",
+                           (airport_id, airport_name, country, website))
+            conn.commit()
+            messagebox.showinfo("Success", "Airport added successfully")
+        except Exception as e:
+            messagebox.showerror("Error", "Failed to add airport")
+            print(e)
+        finally:
+            conn.close()
+        self.view_airport()
+
+    def view_airports(self):
+
+        conn = connect_db()
+        cursor = conn.cursor()
+        try:
+            cursor.execute("SELECT airport_id, airport_name, country, website FROM Airports")
+            rows = cursor.fetchall()
+            self.airport_tree.delete(*self.airport_tree.get_children())  # Clear the current view
+            for row in rows:
+                self.airport_tree.insert("", tk.END, values=row)  # Insert new data
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to refresh airports: {e}")
+        finally:
+            conn.close()
+
+    def delete_selected_airport(self):
+        """Delete the selected airport from the database."""
+        selected_items = self.airport_tree.selection()  # Gets the list of all selected items
+        if selected_items:
+            selected_item = selected_items[0]  # Assuming single selection, gets the first item
+            airport_id = self.airport_tree.item(selected_item, 'values')[
+                1]  # Get airport id from the second column
+
+            response = messagebox.askyesno("Confirm", "Are you sure you want to delete this airport?")
+            if response:
+                conn = connect_db()
+                cursor = conn.cursor()
+                try:
+                    cursor.execute("DELETE FROM Airports WHERE airport_id=%s", (airport_id,))
+                    conn.commit()
+                    messagebox.showinfo("Success", "Airport deleted successfully")
+                    self.view_airports()  # Refresh the list after deletion
+                except Exception as e:
+                    messagebox.showerror("Error", f"Failed to delete airport: {e}")
+                finally:
+                    conn.close()
+        else:
+            messagebox.showerror("Error", "No Airports selected for deletion.")
+
+    def setup_payments_tab(self):
+        self.payment_tab = ttk.Frame(self.tabControl)
+        self.tabControl.add(self.payment_tab, text='Payments')
+
+        # Labels and Entries for payment details
+        ttk.Label(self.payment_tab, text='Payment id:').grid(row=0, column=0, padx=10, pady=5)
+        self.payment_id_entry = ttk.Entry(self.payment_tab)
+        self.payment_id_entry.grid(row=0, column=1, sticky="nsew")
+
+        ttk.Label(self.payment_tab, text='Payment Method:').grid(row=1, column=0, padx=10, pady=5)
+        self.payment_method_entry = ttk.Entry(self.payment_tab)
+        self.payment_method_entry.grid(row=1, column=1, sticky="nsew")
+
+        ttk.Label(self.payment_tab, text='Payment Amount:').grid(row=2, column=0, padx=10, pady=5)
+        self.amount_entry = ttk.Entry(self.payment_tab)
+        self.amount_entry.grid(row=2, column=1, sticky="nsew")
+
+        ttk.Label(self.payment_tab, text='Payment Date:').grid(row=3, column=0, padx=10, pady=5)
+        self.date_entry = ttk.Entry(self.payment_tab)
+        self.date_entry.grid(row=3, column=1, sticky="nsew")
+
+        # Buttons for managing payments
+        ttk.Button(self.payment_tab, text='Add Payment', command=self.add_payment, width=5).grid(row=4, column=0,
+                                                                                                 pady=10,
+                                                                                                 sticky="nsew")
+        ttk.Button(self.payment_tab, text='View Payments', command=self.refresh_payments, width=5).grid(row=4,
+                                                                                                     column=1,
+                                                                                                     pady=10,
+                                                                                                     sticky="nsew")
+        ttk.Button(self.payment_tab, text='Delete Payment', command=self.delete_selected_payment, width=5).grid(
+            row=4,
+            column=2,
+            pady=10,
+            sticky="ew")
+
+        # Treeview for displaying payments
+        self.payment_tree = ttk.Treeview(self.payment_tab, columns=(
+            "Payment id", "Payment Method", "Payment Amount", "Payment Date"), show="headings")
+        self.payment_tree.grid(row=5, column=0, columnspan=3, pady=10, padx=10, sticky="nsew")
+
+        # Set headings for the columns
+        for col in self.payment_tree["columns"]:
+            self.payment_tree.heading(col, text=col)
+            self.payment_tree.column(col, anchor=tk.CENTER)
+
+        # Scrollbar for the Treeview
+        self.payment_scroll = ttk.Scrollbar(self.payment_tab, orient="vertical",
+                                            command=self.payment_tree.yview)
+        self.payment_scroll.grid(row=5, column=3, sticky='nsew')
+        self.payment_tree.configure(yscrollcommand=self.payment_scroll.set)
+
+    def add_payment(self):
+        payment_id = self.payment_id_entry.get().strip()
+        payment_method = self.payment_mathod_entry.get().strip()
+
+        payment_amount = self.payment_amount_entry.get().strip()
+        payment_date = self.payment_date_entry.get().strip()
+
+        if is_entry_valid(self.payment_id_entry) and is_entry_valid(self.payment_method_entry) and is_entry_valid(self.payment_amount_entry) and is_entry_valid(self.payment_date_entry):
+            conn = connect_db()
+            cursor = conn.cursor()
+
+            # Insert the payment into the database
+            cursor.execute(
+                "INSERT INTO Payment (payment_id ,payment_method,payment_amount, payment_date, ) VALUES (?, datetime('now'), ?)",
+                (payment_amount, payment_method))
+            conn.commit()
+
+            # Clear the entry fields
+            self.payment_id_entry.delete(0, tk.END)
+            self.payment_method_entry.delete(0, tk.END)
+
+            self.payment_amount_entry.delete(0, tk.END)
+            self.payment_date_entry.delete(0, tk.END)
+
+            # Refresh the payments list
+            self.refresh_payments()
+
+            conn.close()
+
+    def refresh_payments(self):
+        # Clear existing data from the treeview
+        self.payments_tree.delete(*self.payments_tree.get_children())
+
+        conn = connect_db()
+        cursor = conn.cursor()
+
+        # Retrieve payments from the database
+        cursor.execute("SELECT * FROM Payment")
+        payments = cursor.fetchall()
+
+        # Populate the treeview with payment data
+        for payment in payments:
+            self.payments_tree.insert("", tk.END, values=payment)
+
+        conn.close()
+
+    def delete_selected_payment(self):
+        selected_item = self.payments_tree.selection()
+        if selected_item:
+            conn = connect_db()
+            cursor = conn.cursor()
+
+            # Get the payment ID of the selected payment
+            payment_id = self.payments_tree.item(selected_item)["values"][0]
+
+            # Delete the payment from the database
+            cursor.execute("DELETE FROM Payment WHERE payment_id=?", (payment_id,))
+            conn.commit()
+
+            # Refresh the payments list
+            self.refresh_payments()
+
+            conn.close()
 
     def setup_reservations_tab(self):
         self.reservations_tab = ttk.Frame(self.tabControl)
@@ -101,6 +338,9 @@ class AirlineApp:
         finally:
             conn.close()
         self.refresh_bookings()
+
+
+
     def refresh_bookings(self):
         conn = connect_db()
         cursor = conn.cursor()
