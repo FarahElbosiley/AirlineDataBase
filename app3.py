@@ -152,7 +152,7 @@ class AirlineApp(tk.Tk):
             sticky="ew")
 
         # Treeview for displaying airports
-        self.airport_tree = ttk.Treeview(self.airport_tab, columns=("Airport Name","City ","Country"), show="headings")
+        self.airport_tree = ttk.Treeview(self.airport_tab, columns=("Airport ID","Airport Name","City ","Country"), show="headings")
         self.airport_tree.grid(row=5, column=0, columnspan=3, pady=10, padx=10, sticky="nsew")
 
         # Set headings for the columns
@@ -178,8 +178,8 @@ class AirlineApp(tk.Tk):
         conn = connect_db()
         cursor = conn.cursor()
         try:
-            cursor.execute("""INSERT INTO Airports (airport_name, city,country)
-                              VALUES (%s, %s, %s)""", (airport_name, city,country))
+            cursor.execute("""INSERT INTO Airports (airport_name, city, country)
+                              VALUES (%s, %s, %s)""", (airport_name, city, country))
             conn.commit()
             messagebox.showinfo("Success", "Airport added successfully")
         except Exception as e:
@@ -194,7 +194,7 @@ class AirlineApp(tk.Tk):
         conn = connect_db()
         cursor = conn.cursor()
         try:
-            cursor.execute("SELECT airport_name,city , country FROM Airports")
+            cursor.execute("SELECT airport_id, airport_name,city , country FROM Airports")
             rows = cursor.fetchall()
             self.airport_tree.delete(*self.airport_tree.get_children())  # Clear the current view
             for row in rows:
