@@ -141,7 +141,8 @@ CREATE TABLE Paid_With (
 
 
 
-CREATE FUNCTION total_flights_for_airline (@input_airline_name VARCHAR(255)) 
+-- Create the function
+CREATE FUNCTION total_flights_for_airlines (@input_airline_name VARCHAR(255)) 
 RETURNS INT AS
 BEGIN
     DECLARE @total_flights INT;
@@ -155,8 +156,19 @@ BEGIN
     RETURN @total_flights;
 END
 
+-- Create a view to display airlines with their total flights
+CREATE VIEW AirlinesWithTotalFlights AS
+SELECT 
+    a.airline_id,
+    a.airline_name,
+    a.country,
+    a.website,
+    dbo.total_flights_for_airlines(a.airline_name) AS total_flights
+FROM 
+    Airlines a;
+
 INSERT INTO Airlines (airline_name, country, website)
 VALUES ('Example Airlines', 'United States', 'http://www.example.com');
 
-SELECT dbo.total_flights_for_airline('Example Airlines');
+SELECT * FROM AirlinesWithTotalFlights;
 
